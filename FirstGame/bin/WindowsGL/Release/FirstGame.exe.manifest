@@ -43,14 +43,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="FirstGame.exe" size="62464">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="FirstGame.exe" size="62976">
       <assemblyIdentity name="FirstGame" version="1.0.0.0" language="neutral" processorArchitecture="x86" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
-        <dsig:DigestValue>1hMb4+DhQ9NP7K7+tdGyGYlTMrU=</dsig:DigestValue>
+        <dsig:DigestValue>3Ecmv4iOcP7S+fk087dQO1qCOAA=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
@@ -126,7 +126,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
-      <dsig:DigestValue>X1vECoTopnJQLgi1Rne6ySlK9uw=</dsig:DigestValue>
+      <dsig:DigestValue>hlU0sAxLfy8CLytjU2rOx+7w7O8=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Content\JnRTiles.png" size="5762">

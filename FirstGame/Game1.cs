@@ -517,10 +517,21 @@ namespace FirstGame
                 if (theMan.Collision(item))
                 {
                     toRemove.Add(coins.IndexOf(item));
-                    theMan.PowerUp(MegaPowerUp.Jump, 20000);
-                    theMan.Health--;
+                    theMan.PowerUp(MegaPowerUp.Jump, 10000);
+
+                    SpriteAnimate gem = new SpriteAnimate(hudItems, 2, 3, graphics.GraphicsDevice);
+                    gem.SetRange(3, 3);
+                    gem.Zoom = 0.5f;
+                    powerUps.Add(new TerrainBox(gem,
+                        new Vector2(graphics.GraphicsDevice.Viewport.Width - (gem.GetDestinationRec(Vector2.Zero).Width * 1.5f),
+                        gem.GetDestinationRec(Vector2.Zero).Height + gem.GetDestinationRec(Vector2.Zero).Height / 2)));
+
                 }
             });
+
+            if (powerUps.Count > 0)
+                if (theMan.ActivePower == MegaPowerUp.None)
+                    powerUps.RemoveAt(0);
 
             toRemove.ForEach(item =>
                 {
@@ -529,7 +540,7 @@ namespace FirstGame
             List<Collidable> obstaclesNWalls = new List<Collidable>();
             List<Rectangle> walls = new List<Rectangle>();
             Rectangle left, right, top, bottom;
-            left = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
+            left = new Rectangle(GraphicsDevice.Viewport.Bounds.Left - 5, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
             right = new Rectangle(GraphicsDevice.Viewport.Bounds.Right, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
             top = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Top - 5, GraphicsDevice.Viewport.Width, 5);
             bottom = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Bottom, GraphicsDevice.Viewport.Width, 5);
@@ -671,6 +682,11 @@ namespace FirstGame
             {
                 item.Draw(spriteBatch, gameTime);
             });
+
+            powerUps.ForEach(item =>
+                {
+                    item.Draw(spriteBatch, gameTime);
+                });
             spriteBatch.End();
 
             base.Draw(gameTime);
