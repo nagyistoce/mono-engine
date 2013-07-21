@@ -450,17 +450,17 @@ namespace Character
             //else
             //    collide = CollisionDetection(new List<Collidable> { floor }, out c);
 
-            #region upDownCollision
+            //Apply checks to see if we are striking the object from top, bottom, left or right
             if (c != null)
             {
                 Rectangle collideBounds = c.Bounds;
                 Rectangle charBounds = Bounds;
-                //int xDist = Math.Abs(charBounds.Center.X - collideBounds.Center.X);
-                //int yDist = Math.Abs(charBounds.Center.Y - collideBounds.Center.Y);
+                int xDist = Math.Abs(charBounds.Center.X - collideBounds.Center.X);
+                int yDist = Math.Abs(charBounds.Center.Y - collideBounds.Center.Y);
 
-                //if (xDist <= yDist)
-                //{
-                    //Hit object from below
+                if (xDist <= yDist)
+                {
+                    //Handle up-down collision
                     if (charBounds.Top <= collideBounds.Bottom &&
                         charBounds.Bottom > collideBounds.Bottom)
                     {
@@ -468,9 +468,7 @@ namespace Character
                         lastAction = subAction;
                         subAction = CharacterSubState.Falling;
                     }
-                        //Hit object from above
-                    else if(charBounds.Bottom >= collideBounds.Top &&
-                        charBounds.Top < collideBounds.Top)
+                    else
                     {
                         //Stand Still
                         
@@ -511,34 +509,31 @@ namespace Character
 
                         currentPosition.Y = jumpCounter = collideBounds.Top - 1;
                     }
-                //}
-                //else
-                //{
-                //    //Handle left-right collision
-                //    if (charBounds.Left <= collideBounds.Right &&
-                //        charBounds.Right > collideBounds.Right)
-                //    {
-                //        currentPosition.X += xDist - ((charBounds.Width / 2) + (collideBounds.Width / 2)) + 1;
+                }
+                else
+                {
+                    //Handle left-right collision
+                    if (charBounds.Left <= collideBounds.Right &&
+                        charBounds.Right > collideBounds.Right)
+                    {
+                        currentPosition.X += xDist - ((charBounds.Width / 2) + (collideBounds.Width / 2)) + 1;
                         
-                //    }
-                //    else
-                //    {
-                //        currentPosition.X -= ((charBounds.Width / 2) + (collideBounds.Width / 2)) - xDist + 1;
-                //    }
+                    }
+                    else
+                    {
+                        currentPosition.X -= ((charBounds.Width / 2) + (collideBounds.Width / 2)) - xDist + 1;
+                    }
 
-                //    if (!StateIsJumping(currentState))
-                //    {
-                //        if (StateIsLeft(currentState))
-                //            currentState = CharacterState.StillLeft;
-                //        else
-                //            currentState = CharacterState.StillRight;
-                //    }
-                //}
+                    if (!StateIsJumping(currentState))
+                    {
+                        if (StateIsLeft(currentState))
+                            currentState = CharacterState.StillLeft;
+                        else
+                            currentState = CharacterState.StillRight;
+                    }
+                }
             }
 
-            #endregion
-
-            #region testForGravity
             //Apply gravity if no collisions are detected and not mid-jump
                 //Also, checking lastAction for 'jumping' - this causes a 1 frame delay in gravity enforcement.
                 //This check allows us to reach max jump height while shooting
@@ -547,8 +542,7 @@ namespace Character
                 lastAction != CharacterSubState.Jumping)
             {
                 //Test to see if we are 'clear' to continue falling
-                float oldY = currentPosition.Y;
-                currentPosition.Y = jumpCounter + runRate;
+                currentPosition.Y += runRate * 2;
                 if (!CollisionDetection(obstacles,out c))
                 {
                     lastAction = subAction;
@@ -573,7 +567,7 @@ namespace Character
                     }
                 }
 
-                currentPosition.Y = oldY;
+                currentPosition.Y -= runRate * 2;
 
                 if (c != null)
                 {
@@ -586,20 +580,13 @@ namespace Character
                 }
             }
 
-            #endregion
-
-            #region ProcessLeftRight
             if (currentState == CharacterState.Left)
             {
                 currentPosition.X -= runRate;
-                if (CollisionDetection(obstacles, out c))
+                if (CollisionDetection(obstacles))
                 {
-                    Rectangle charBounds = Bounds;
-                    Rectangle collideBounds = c.Bounds;
-
-                    currentPosition.X += Math.Abs(charBounds.Left - collideBounds.Right) + 1;
-
                     currentState = CharacterState.StillLeft;
+                    currentPosition.X += runRate;
                 }
                 else if (lastState != CharacterState.Left)
                     runnerSprite.DrawSequence = runLeft;
@@ -609,22 +596,16 @@ namespace Character
             {
 
                 currentPosition.X += runRate;
-                if (CollisionDetection(obstacles, out c))
+                if (CollisionDetection(obstacles))
                 {
-                    Rectangle charBounds = Bounds;
-                    Rectangle collideBounds = c.Bounds;
-
-                    currentPosition.X -= Math.Abs(charBounds.Right - collideBounds.Left) + 1;
-
                     currentState = CharacterState.StillRight;
-                    
+                    currentPosition.X -= runRate;
                 }
                 else if (lastState != CharacterState.Right)
                     runnerSprite.DrawSequence = runRight;
             }
-            #endregion
 
-            if (subAction == CharacterSubState.Falling)
+            if(subAction == CharacterSubState.Falling)
             {
                 jumpCounter += runRate;
 
@@ -649,8 +630,8 @@ namespace Character
 
             if (subAction == CharacterSubState.Shooting)
             {
-                Vector2 start;
-                Vector2 end;
+                Vector2 start;// = new Vector2(currentPosition.X, currentPosition.Y - offset);
+                Vector2 end;// = new Vector2(start.X, start.Y);
                 if (StateIsLeft(currentState))
                 {
                     gunAngle += 180;
@@ -764,22 +745,22 @@ namespace Character
             get
             {
                 Rectangle rec;
-                //if (StateIsJumping(currentState))
-                //{
-                //    rec = jumpSprite.GetDestinationRec(currentPosition);
+                if (StateIsJumping(currentState))
+                {
+                    rec = jumpSprite.GetDestinationRec(currentPosition);
          
-                //}
-                //else if (currentState == CharacterState.ShootLeft ||
-                //    currentState == CharacterState.ShootRight)
-                //{
-                //    rec = shootSprite.GetDestinationRec(currentPosition);
+                }
+                else if (currentState == CharacterState.ShootLeft ||
+                    currentState == CharacterState.ShootRight)
+                {
+                    rec = shootSprite.GetDestinationRec(currentPosition);
                     
-                //}
-                //else
-                //{
+                }
+                else
+                {
                     rec = runnerSprite.GetDestinationRec(currentPosition);
                  
-               // }
+                }
 
                 int newWidth = (int) (rec.Width * 0.8f);
                 rec.X += (int)(rec.Width - newWidth) / 2;
