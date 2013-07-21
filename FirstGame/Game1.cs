@@ -48,12 +48,9 @@ namespace FirstGame
         List<StaticBox> coins;
         List<ElevatorBox> platforms;
         List<EmptyBox> deathRec;
-<<<<<<< HEAD
         List<TerrainBox> healthBar;
         List<TerrainBox> powerUps;
         List<Snail> enemies;
-=======
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
 
         public Level1(int rows, int columns, int viewWidth, int viewHeight, ContentManager content)
         {
@@ -80,22 +77,15 @@ namespace FirstGame
         SpriteBatch spriteBatch; //For testing
 
         Character.MegaMan theMan;
-<<<<<<< HEAD
-=======
-        StaticBox obstacle1;
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
         List<Collidable> obstacles;
         List<TerrainBox> terrain;
         List<StaticBox> coins;
         List<ElevatorBox> platforms;
         List<EmptyBox> deathRec;
         List<Snail> enemies;
-<<<<<<< HEAD
         List<TerrainBox> healthBar;
         List<TerrainBox> powerUps;
         Texture2D hudItems;
-=======
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
         SpriteAnimate background;
         Vector2 backgroundLoc;
         SpriteFont tahoma;
@@ -387,14 +377,6 @@ namespace FirstGame
 
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
-<<<<<<< HEAD
-=======
-            SpriteAnimate theBox = new SpriteAnimate(Content.Load<Texture2D>(@"Box"), 1, 1, GraphicsDevice);
-            theBox.SetRange(0, 0);
-            theBox.Zoom = 1.75f;
-            obstacle1 = new StaticBox(theBox, new Vector2(600, GraphicsDevice.Viewport.Height));
-
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
             background = new SpriteAnimate(Content.Load<Texture2D>(@"Background"), 1, 1, GraphicsDevice);
             background.SetRange(0, 0);
             background.Zoom = 2.0f;
@@ -404,7 +386,6 @@ namespace FirstGame
 
             tahoma = Content.Load<SpriteFont>(@"Tahoma");
 
-<<<<<<< HEAD
             hudItems = Content.Load<Texture2D>("hud_heartGems");
             healthBar = new List<TerrainBox>();
             powerUps = new List<TerrainBox>();
@@ -418,8 +399,6 @@ namespace FirstGame
                         heart.GetDestinationRec(Vector2.Zero).Height + heart.GetDestinationRec(Vector2.Zero).Height / 2)));
             }
 
-=======
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
         }
 
         /// <summary>
@@ -538,7 +517,6 @@ namespace FirstGame
                 if (theMan.Collision(item))
                 {
                     toRemove.Add(coins.IndexOf(item));
-<<<<<<< HEAD
                     theMan.PowerUp(MegaPowerUp.Jump, 10000);
 
                     SpriteAnimate gem = new SpriteAnimate(hudItems, 2, 3, graphics.GraphicsDevice);
@@ -555,12 +533,6 @@ namespace FirstGame
                 if (theMan.ActivePower == MegaPowerUp.None)
                     powerUps.RemoveAt(0);
 
-=======
-                    theMan.PowerUp(MegaPowerUp.Jump, 20000);
-                }
-            });
-
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
             toRemove.ForEach(item =>
                 {
                     coins.RemoveAt(item);
@@ -568,11 +540,7 @@ namespace FirstGame
             List<Collidable> obstaclesNWalls = new List<Collidable>();
             List<Rectangle> walls = new List<Rectangle>();
             Rectangle left, right, top, bottom;
-<<<<<<< HEAD
             left = new Rectangle(GraphicsDevice.Viewport.Bounds.Left - 5, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
-=======
-            left = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
             right = new Rectangle(GraphicsDevice.Viewport.Bounds.Right, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
             top = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Top - 5, GraphicsDevice.Viewport.Width, 5);
             bottom = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Bottom, GraphicsDevice.Viewport.Width, 5);
@@ -610,7 +578,6 @@ namespace FirstGame
             deathRec.ForEach(item =>
                 {
                     if (item.Bounds.Contains(theMan.Bounds.Center))
-<<<<<<< HEAD
                     {
                         bLost = true;
                         theMan.Health = 0;
@@ -636,10 +603,6 @@ namespace FirstGame
                     }
                 });
 
-=======
-                        bLost = true;
-                });
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
             base.Update(gameTime);
         }
 
@@ -713,7 +676,6 @@ namespace FirstGame
 
             spriteBatch.End();
 
-<<<<<<< HEAD
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp,
                 DepthStencilState.Default, RasterizerState.CullNone);
             healthBar.ForEach(item =>
@@ -727,8 +689,6 @@ namespace FirstGame
                 });
             spriteBatch.End();
 
-=======
->>>>>>> 26631b3712e71accb71f5c5fc755db35108b6caf
             base.Draw(gameTime);
         }
     }
