@@ -193,7 +193,13 @@ namespace Character
 
     }
 
-    class Snail : Character, Collidable
+    interface Enemy : Collidable
+    {
+        int Health { get; set; }
+        int Damage { get; }
+    }
+
+    class Snail : Character, Enemy
     {
         static List<int> moveSeq;
         static int deathSeq;
@@ -203,12 +209,24 @@ namespace Character
         int runRate;
         int runDelay;
         int isLeft;
+        bool isDead;
+        int deathCounter;
 
         public bool Moving
         {
             get
             {
                 return true;
+            }
+        }
+
+        public int Health { get; set; }
+
+        public int Damage
+        {
+            get
+            {
+                return 1;
             }
         }
 
@@ -221,6 +239,9 @@ namespace Character
             moveSeq = new List<int> { 0, 1 };
             deathSeq = 2;
             currentPosition = StartingPos;
+            Health = 6;
+            isDead = false;
+            deathCounter = 0;
         }
 
         override public void Load(ContentManager Content)
@@ -234,22 +255,29 @@ namespace Character
 
         public override void Update(GameTime time, List<Collidable> obstacles)
         {
-            currentPosition.X += runRate * isLeft;
-            Rectangle belowMe = new Rectangle(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height);
-            belowMe.Y += belowMe.Height;
-            belowMe.X += belowMe.Width * isLeft;
-            bool groundLeft = false;
-            foreach (Collidable c in obstacles)
+            if (!isDead)
             {
-                if (c.Bounds.Contains(belowMe.Center))
+                currentPosition.X += runRate * isLeft;
+                Rectangle belowMe = new Rectangle(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height);
+                belowMe.Y += belowMe.Height;
+                belowMe.X += belowMe.Width * isLeft;
+                bool groundLeft = false;
+                foreach (Collidable c in obstacles)
                 {
-                    groundLeft = true;
-                    break;
+                    if (c.Bounds.Contains(belowMe.Center))
+                    {
+                        groundLeft = true;
+                        break;
+                    }
                 }
-            }
 
-            if (!groundLeft)
-                isLeft *= -1;
+                if (!groundLeft)
+                    isLeft *= -1;
+            }
+            if (Health <= 0)
+            {
+                isDead = true;
+            }
 
             snailSprite.Update(time);
             base.Update(time, obstacles);
@@ -257,11 +285,15 @@ namespace Character
 
         public bool Collision(Rectangle toCheck)
         {
+            if (isDead)
+                return false;
             return Bounds.Intersects(toCheck);
         }
 
         public bool Collision(Collidable toCheck)
         {
+            if (isDead)
+                return false;
             return Bounds.Intersects(toCheck.Bounds);
         }
 
@@ -275,14 +307,30 @@ namespace Character
 
         public override void Draw(SpriteBatch spriteBatch, GameTime time)
         {
-            //if we are right, need to flip
-            if (isLeft == 1)
+            if (deathCounter < 20000)
             {
-                snailSprite.FlipHorizontal = true;
+                //if we are right, need to flip
+                if (isLeft == 1)
+                {
+                    snailSprite.FlipHorizontal = true;
+                }
+                else
+                    snailSprite.FlipHorizontal = false;
+                if (isDead)
+                {
+                    if (deathCounter == 0)
+                        snailSprite.SetRange(deathSeq, deathSeq);
+                    deathCounter += time.ElapsedGameTime.Milliseconds;
+                    float rotationAngle = deathCounter / 1000.0f;
+                    if (rotationAngle <= MathHelper.Pi)
+                    {
+                        //float circle = MathHelper.Pi * 2;
+                        //rotationAngle = rotationAngle % circle;
+                        snailSprite.Rotate = MathHelper.Pi - rotationAngle;
+                    }
+                }
+                snailSprite.Draw(spriteBatch, currentPosition);
             }
-            else 
-                snailSprite.FlipHorizontal = false;
-            snailSprite.Draw(spriteBatch, currentPosition);
         }
     }
 
@@ -385,6 +433,7 @@ namespace Character
             runnerSprite.DrawDelay = runDelay;
             runnerSprite.Trim = 0.03f;
             runnerSprite.Zoom = 0.08f;
+            runnerSprite.ScrollY = 2;
 
             jumpSprite = new SpriteAnimate(MegaJumpShoot, 1, 4, graphics);
             jumpSprite.Zoom = 0.08f;
@@ -395,6 +444,7 @@ namespace Character
             shootSprite.Zoom = 0.08f;
             shootSprite.Trim = 0.02f;
             shootSprite.SetRange(0, 0);
+            shootSprite.ScrollY = 2;
 
             currentWeapon = new MegaBlaster(graphics);
             currentWeapon.Load(Content);
@@ -484,7 +534,7 @@ namespace Character
                 {
                     if (c.Moving)
                     {
-                        jumpCounter = currentPosition.Y = c.Bounds.Top;
+                        jumpCounter = currentPosition.Y = c.Bounds.Top - 1;
                         lastAction = subAction;
                         subAction = CharacterSubState.None;
                     }
@@ -720,8 +770,10 @@ namespace Character
                     rec = runnerSprite.GetDestinationRec(currentPosition);
 
                 int newWidth = (int) (rec.Width * 0.8f);
-                rec.X += (int)(rec.Width - newWidth) / 2;
+                int newHeight = (int)(rec.Height * 0.8f);
+                //rec.X += (int)(rec.Width - newWidth) / 2;
                 rec.Width = newWidth;
+                //rec.Height = newHeight;
 
                 return rec;
             }

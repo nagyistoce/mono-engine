@@ -40,7 +40,12 @@ namespace TextureAtlas
 
             }
         }
-        
+        public int ScrollY { get; set;}
+
+        public int ScrollX { get; set; }
+
+        public float Rotate { get; set; }
+
         public List<int> DrawSequence 
         {
             get
@@ -86,6 +91,9 @@ namespace TextureAtlas
             this.Trim = 0.00f;
             this.Zoom = 1.0f;
             this.FlipHorizontal = false;
+            this.ScrollY = 0;
+            this.ScrollX = 0;
+            this.Rotate = 0.0f;
         }
 
         public void Update(GameTime time)
@@ -139,9 +147,23 @@ namespace TextureAtlas
             Rectangle destinationRectangle = GetDestinationRec(location);
             float scale = (float)graphics.Viewport.Height / 480;
             SpriteEffects effect = SpriteEffects.None;
+            Vector2 origin;
+            
+            //if (Rotate != 0.0)
+            //    origin = new Vector2(destinationRectangle.Width / 2, destinationRectangle.Height / 2);
+            //else
+                origin = Vector2.Zero;
+
             if (FlipHorizontal)
                 effect = SpriteEffects.FlipHorizontally;
-            spriteBatch.Draw(Texture,new Vector2( destinationRectangle.X,destinationRectangle.Y) , sourceRectangle, Color.White, 0.0f, Vector2.Zero, scale * zoom, effect, 0.0f);
+            spriteBatch.Draw(Texture,new Vector2( destinationRectangle.X + ScrollX,destinationRectangle.Y + ScrollY) , 
+                sourceRectangle, 
+                Color.White, 
+                Rotate,
+                origin, 
+                scale * zoom, 
+                effect, 
+                0.0f);
         }
 
         public Rectangle GetDestinationRec(Vector2 location)

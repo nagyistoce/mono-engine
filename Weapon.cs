@@ -61,14 +61,21 @@ namespace Weapon
             {
                 bool hitDest = false;
                 if (colliders != null)
+                {
                     colliders.ForEach(collide =>
                         {
                             if (item.Collision(collide))
+                            {
                                 hitDest = true;
+                                Character.Enemy e = collide as Character.Enemy;
+                                if (e != null)
+                                {
+                                    e.Health -= item.Damage;
+                                }
+                            }
                         });
+                }
                 if (hitDest)
-                    toRemove.Add(bulletList.IndexOf(item));
-                else if (item.HitDest) //TODO: If outside bounds are defined this is unnecessary?
                     toRemove.Add(bulletList.IndexOf(item));
             });
 

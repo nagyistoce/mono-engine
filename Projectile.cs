@@ -41,8 +41,10 @@ namespace Projectile
         }
         private int xDir;
         private int yDir;
-        private double slope;// = (initLoc.Y - destLoc.Y) / (initLoc.X - destLoc.X);
-        private double length;// = Math.Sqrt(Math.Pow((initLoc.X - destLoc.X), 2) + Math.Pow((initLoc.Y - destLoc.Y), 2));
+        private double slope;
+        private double length;
+
+        //This seems unnecessary if you are using collision detection, but maybe not?
         public bool HitDest
         {
             get
@@ -79,6 +81,13 @@ namespace Projectile
                 }
 
                 return false;
+            }
+        }
+
+        virtual public int Damage {
+            get
+            {
+                return 1;
             }
         }
 
