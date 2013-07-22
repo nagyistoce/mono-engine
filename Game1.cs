@@ -530,8 +530,8 @@ namespace FirstGame
             });
 
             if (powerUps.Count > 0)
-                if (theMan.ActivePower == MegaPowerUp.None)
-                    powerUps.RemoveAt(0);
+                if (theMan.ActivePower.Count == 0)
+                    powerUps.Clear();
 
             toRemove.ForEach(item =>
                 {
@@ -560,20 +560,14 @@ namespace FirstGame
             obstaclesNWalls.AddRange(obstacles);
 
             obstaclesNWalls.AddRange(platforms);
-
+            List<Enemy> badGuys = new List<Enemy>();
              enemies.ForEach(item =>
                 {
                     item.Update(gameTime, obstaclesNWalls);
+                    badGuys.Add(item);
                 });
 
-             obstaclesNWalls.AddRange(enemies);
-
-             theMan.Update(gameTime, obstaclesNWalls);
-
-            //if (theMan.Bounds.Right >= GraphicsDevice.Viewport.Bounds.Right)
-            //{
-            //    bWon = true;
-            //}
+             theMan.Update(gameTime, obstaclesNWalls, badGuys);
 
             deathRec.ForEach(item =>
                 {
@@ -585,6 +579,8 @@ namespace FirstGame
                 });
 
             int currHP = theMan.Health;
+            if (currHP <= 0)
+                bLost = true;
             healthBar.ForEach(item =>
                 {
                     if(currHP > 1)
@@ -602,6 +598,7 @@ namespace FirstGame
                         item.theBox.SetRange(2, 2);
                     }
                 });
+
 
             base.Update(gameTime);
         }

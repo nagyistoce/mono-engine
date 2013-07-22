@@ -216,7 +216,7 @@ namespace Character
         {
             get
             {
-                return true;
+                return false;
             }
         }
 
@@ -338,7 +338,8 @@ namespace Character
     {
         None,
         Speed,
-        Jump
+        Jump,
+        Invincible
     }
 
     class MegaMan : Character, Collidable
@@ -372,9 +373,11 @@ namespace Character
         float jumpCounter;
         Weapon.Weapon currentWeapon;
 
-        int powerUpCounter;
-        public MegaPowerUp ActivePower {get; set;}
-        MegaPowerUp lastPower;
+        int blinkCounter;
+
+        private List<KeyValuePair<MegaPowerUp, int>> activePower;
+        public List<KeyValuePair<MegaPowerUp, int>> ActivePower { get { return activePower; } }
+        bool isInvincible;
         float scale;
         public int Health { get; set; }
         public int MaxHealth { get; set; }
@@ -412,10 +415,10 @@ namespace Character
             jumpSpeed = 2f;
             runDelay = 150;
             jumpCounter = StartingPos.Y;
-            powerUpCounter = 0;
-            ActivePower = MegaPowerUp.None;
-            lastPower = MegaPowerUp.None;
+            activePower = new List<KeyValuePair<MegaPowerUp, int>>();
             Health = MaxHealth = 6;
+            isInvincible = false;
+            blinkCounter = runDelay;
         }
         override public void Jump()
         {
@@ -451,55 +454,83 @@ namespace Character
         }
 
         public void PowerUp(MegaPowerUp power, int duration)
-        {   
-                powerUpCounter = duration;
-                lastPower = MegaPowerUp.None;
-                ActivePower = power;
+        {
+            bool found = false;
+            activePower.ForEach(powerUp =>
+                {
+                    if (powerUp.Key == power)
+                        found = true;
+                });
+
+            if (!found)
+            {
+                KeyValuePair<MegaPowerUp, int> newPowerUp = new KeyValuePair<MegaPowerUp, int>(power, duration);
+                activePower.Add(newPowerUp);
+            }
             
         }
-        public override void Update(GameTime time, List<Collidable> obstacles)
+        public void Update(GameTime time, List<Collidable> obstacles, List<Enemy> enemies)
         {
-
-            if (ActivePower != MegaPowerUp.None)
+            List<int> toRemove = new List<int>();
+            activePower.ForEach(power =>
             {
-                if (lastPower == MegaPowerUp.None)
-                {
-                    lastPower = ActivePower;
-                }
-                else
-                {
-                    powerUpCounter -= time.ElapsedGameTime.Milliseconds;
-                }
+                MegaPowerUp thePower = power.Key;
+                int timeLeft = power.Value;
+                KeyValuePair<MegaPowerUp, int> newPower = new KeyValuePair<MegaPowerUp, int>(thePower, timeLeft - time.ElapsedGameTime.Milliseconds);
+                activePower[activePower.IndexOf(power)] = newPower;
 
-                if (powerUpCounter <= 0)
+                if (newPower.Value <= 0)
                 {
-                    switch (ActivePower)
+                    switch (newPower.Key)
                     {
                         case MegaPowerUp.Jump:
                             currJumpHeight = MAX_JUMP_HEIGHT;
                             break;
                         case MegaPowerUp.Speed:
                             break;
+                        case MegaPowerUp.Invincible:
+                            isInvincible = false;
+                            break;
                     }
-                    ActivePower = MegaPowerUp.None;
-                }
+                    toRemove.Add(activePower.IndexOf(newPower));
 
-                switch (ActivePower)
+                }
+                else
                 {
-                    case MegaPowerUp.Jump:
-                        currJumpHeight = MAX_JUMP_HEIGHT * 2;
-                        break;
-                    case MegaPowerUp.Speed:
-                        break;
+                    switch (newPower.Key)
+                    {
+                        case MegaPowerUp.Jump:
+                            currJumpHeight = MAX_JUMP_HEIGHT * 2;
+                            break;
+                        case MegaPowerUp.Speed:
+                            break;
+                        case MegaPowerUp.Invincible:
+                            isInvincible = true;
+                            break;
+                    }
                 }
-            }
-            Collidable c = null;
+            });
 
+            toRemove = toRemove.OrderByDescending(item => item).ToList();
+            toRemove.ForEach(item =>
+                {
+                    activePower.RemoveAt(item);
+                });
+            Collidable c = null;
+            Enemy e = null;
+            if (EnemyCollision(enemies, out e))
+            {
+                Health -= e.Damage;
+                //Damage animation
+
+                //Apply invincibility for 5 seconds
+                PowerUp(MegaPowerUp.Invincible, 5000);
+                return;
+            }
             //Apply gravity if no collisions are detected and not mid-jump
                 //Also, checking lastAction for 'jumping' - this causes a 1 frame delay in gravity enforcement.
                 //This check allows us to reach max jump height while shooting
-            if (//!collide &&
-                subAction != CharacterSubState.Jumping &&
+            if (subAction != CharacterSubState.Jumping &&
                 lastAction != CharacterSubState.Jumping)
             {
                 //Test to see if we are 'clear' to continue falling
@@ -722,10 +753,14 @@ namespace Character
                 }
             }
 
+            List<Collidable> obstaclesNEnemies = new List<Collidable>();
+            obstaclesNEnemies.AddRange(obstacles);
+            obstaclesNEnemies.AddRange(enemies);
+
             runnerSprite.Update(time);
             jumpSprite.Update(time);
             shootSprite.Update(time);
-            currentWeapon.Update(time, obstacles);
+            currentWeapon.Update(time, obstaclesNEnemies);
             base.Update(time, obstacles);
         }
 
@@ -781,19 +816,58 @@ namespace Character
 
         public override void Draw(SpriteBatch spriteBatch, GameTime time)
         {
-            if (currentState == CharacterState.JumpLeft ||
-                currentState == CharacterState.JumpRight)
+            bool toDraw = true;
+            if (isInvincible)
             {
-                jumpSprite.Draw(spriteBatch, currentPosition);
+                if (blinkCounter >= runDelay)
+                {
+                    toDraw = false;
+                    blinkCounter -= time.ElapsedGameTime.Milliseconds;
+                }
+                else
+                {
+                    blinkCounter -= time.ElapsedGameTime.Milliseconds;
+                    if (blinkCounter <= -runDelay)
+                        blinkCounter = runDelay;
+                }
             }
-            else if (currentState == CharacterState.ShootLeft ||
-                currentState == CharacterState.ShootRight)
+
+            if (toDraw)
             {
-                shootSprite.Draw(spriteBatch, currentPosition);
+                if (currentState == CharacterState.JumpLeft ||
+                    currentState == CharacterState.JumpRight)
+                {
+                    jumpSprite.Draw(spriteBatch, currentPosition);
+                }
+                else if (currentState == CharacterState.ShootLeft ||
+                    currentState == CharacterState.ShootRight)
+                {
+                    shootSprite.Draw(spriteBatch, currentPosition);
+                }
+                else
+                    runnerSprite.Draw(spriteBatch, currentPosition);
             }
-            else
-                runnerSprite.Draw(spriteBatch, currentPosition);
             currentWeapon.Draw(spriteBatch, time);
+        }
+
+        private bool EnemyCollision(List<Enemy> obstacles, out Enemy enemyCollided)
+        {
+            bool collided = false;
+            Collidable c = null;
+            if (!isInvincible)
+            {
+                List<Collidable> collList = new List<Collidable>();
+                
+                obstacles.ForEach(item =>
+                    {
+                        collList.Add(item);
+                    });
+
+                collided = CollisionDetection(collList, out c);
+            }
+
+            enemyCollided = c as Enemy;
+            return collided;
         }
 
         private bool CollisionDetection(List<Collidable> obstacles)
@@ -810,10 +884,11 @@ namespace Character
             {
                 if (Collision(item))
                 {
-                    if(!detected)
+                    if (!detected)
                         c = item;
                     detected = true;
                 }
+
             });
             objectCollided = c;
             return detected;
