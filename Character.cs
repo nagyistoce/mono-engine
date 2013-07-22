@@ -226,6 +226,7 @@ namespace Character
         {
             get
             {
+                isLeft *= -1;
                 return 1;
             }
         }
@@ -260,7 +261,7 @@ namespace Character
                 currentPosition.X += runRate * isLeft;
                 Rectangle belowMe = new Rectangle(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height);
                 belowMe.Y += belowMe.Height;
-                belowMe.X += belowMe.Width * isLeft;
+                belowMe.X += (belowMe.Width / 2) * isLeft;
                 bool groundLeft = false;
                 foreach (Collidable c in obstacles)
                 {
