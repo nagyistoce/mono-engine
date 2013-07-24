@@ -575,7 +575,8 @@ namespace Character
                     {
                         jumpCounter = currentPosition.Y = c.Bounds.Top - 1;
                         lastAction = subAction;
-                        subAction = CharacterSubState.None;
+                        if(subAction != CharacterSubState.Shooting)
+                            subAction = CharacterSubState.None;
                     }
                 }
             }
