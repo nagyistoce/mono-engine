@@ -35,14 +35,14 @@ namespace FirstGame
         Platform,
         StartPosition,
         BackObjects,
-        Death
+        Death,
+        Enemies
     }
 
     class Level1
     {
         private int[,] FullLevel;
-        private int[,] ViewableLevel;
-        LevelLoader loader;
+        private int[,] LoadedLevel;
         List<Collidable> obstacles;
         List<TerrainBox> terrain;
         List<StaticBox> coins;
@@ -50,106 +50,118 @@ namespace FirstGame
         List<EmptyBox> deathRec;
         List<TerrainBox> healthBar;
         List<TerrainBox> powerUps;
-        List<Snail> enemies;
-
-        public Level1(int rows, int columns, int viewWidth, int viewHeight, ContentManager content)
-        {
-            FullLevel = new int [rows,columns];
-            ViewableLevel = new int[viewWidth, viewHeight];
-            loader = new LevelLoader(content.RootDirectory + @"\Level1.xml", content.Load<Texture2D>(@"JnRTiles"), 18, 1);
-        }
-    }
-
-    class LevelLoader
-    {
-        public LevelLoader(string FileName, Texture2D tileset, int tileColumns, int tileRows)
-        {
-
-        }
-    }
-    /// <summary>
-    /// This is the main type for your game
-    /// </summary>
-    public class Game1 : Game
-    {
-        
-        GraphicsDeviceManager graphics;
-        SpriteBatch spriteBatch; //For testing
-
-        Character.MegaMan theMan;
-        List<Collidable> obstacles;
-        List<TerrainBox> terrain;
-        List<StaticBox> coins;
-        List<ElevatorBox> platforms;
-        List<EmptyBox> deathRec;
-        List<Snail> enemies;
-        List<TerrainBox> healthBar;
-        List<TerrainBox> powerUps;
+        List<Enemy> enemies;
+        ContentManager content;
+        Texture2D levelSprites;
+        GraphicsDevice graphics;
         Texture2D hudItems;
         SpriteAnimate background;
         Vector2 backgroundLoc;
         SpriteFont tahoma;
+        SpriteBatch spriteBatch;
         bool bWon;
+        public bool Won
+        {
+            get
+            {
+                return bWon;
+            }
+        }
+
         bool bLost;
+        public bool Lost
+        {
+            get
+            {
+                return bLost;
+            }
+        }
         int lostCounter;
+        public int LostCounter { 
+            get
+            {
+                return lostCounter;
+            }
+        }
+
         float cameraMovementX;
         float cameraMovementY;
-        float curZoom;
-        //Weapon.MegaBlaster blaster;
 
-        public Game1()
-            : base()
+        public Vector2 CameraMovement
         {
-            graphics = new GraphicsDeviceManager(this);
-            
-            Content.RootDirectory = "Content";
-            bWon = false;
-            bLost = false;
-            lostCounter = 0;
-            cameraMovementX = 0.0f;
-            cameraMovementY = 0.0f;
-            curZoom = 0.0f;
-            //graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
-            //graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
-            //graphics.IsFullScreen = true;
-            //graphics.ApplyChanges();
+            get
+            {
+                return new Vector2(cameraMovementX, cameraMovementY);
+            }
         }
 
-        /// <summary>
-        /// Allows the game to perform any initialization it needs to before starting to run.
-        /// This is where it can query for any required services and load any non-graphic
-        /// related content.  Calling base.Initialize will enumerate through any components
-        /// and initialize them as well.
-        /// </summary>
-        protected override void Initialize()
-        {
-            // TODO: Add your initialization logic here
-            
-            base.Initialize();
+        MegaMan theMan;
 
+        public Character.Character TheMan
+        {
+            get
+            {
+                return theMan;
+            }
         }
 
-        void LoadLayer(Layer theLayer, XmlReader reader, float scaledX, Texture2D levelSprites)
+        string levelName;
+
+        public Level1(int rows, int columns, int loadWidth, int loadHeight, ContentManager Content, GraphicsDevice Graphics)
         {
-            
-            bool bStone, bCoin, bStart, bCollide, bSnail;
-            bStone = bCoin = bStart = bCollide = bSnail = false;
+            content = Content;
+            FullLevel = new int [rows,columns];
+            LoadedLevel = new int[loadWidth, loadHeight];
+            levelName = @"\Level1.xml";
+            levelSprites = content.Load<Texture2D>(@"JnRTiles");
+            graphics = Graphics;
+            cameraMovementX = cameraMovementY = 0.0f;
+            bWon = bLost = false;
+            tahoma = content.Load<SpriteFont>(@"tahoma");
+            theMan = new MegaMan(Vector2.Zero, graphics);
+            theMan.Load(content);
+            hudItems = Content.Load<Texture2D>("hud_heartGems");
+            healthBar = new List<TerrainBox>();
+            powerUps = new List<TerrainBox>();
+            for (int i = 0; i < 3; i++)
+            {
+                SpriteAnimate heart = new SpriteAnimate(hudItems, 2, 3, graphics);
+                heart.SetRange(0, 0);
+                heart.Zoom = 0.5f;
+                healthBar.Add(new TerrainBox(heart,
+                    new Vector2(i * heart.GetDestinationRec(Vector2.Zero).Width + heart.GetDestinationRec(Vector2.Zero).Width / 2,
+                        heart.GetDestinationRec(Vector2.Zero).Height + heart.GetDestinationRec(Vector2.Zero).Height / 2)));
+            }
+            background = new SpriteAnimate(Content.Load<Texture2D>(@"Background"), 1, 1, graphics);
+            background.SetRange(0, 0);
+            background.Zoom = 2.0f;
+            backgroundLoc = new Vector2(graphics.Viewport.Width / 2, graphics.Viewport.Height);
+            spriteBatch = new SpriteBatch(graphics);
+
+            LoadLevelAndStartPosition();
+        }
+
+        void LoadLayer(LevelLayer theLayer, XmlReader reader, float scaledX, Texture2D levelSprites)
+        {
+
+            bool bStone, bCoin, bStart, bObstacle, bEnemy;
+            bStone = bCoin = bStart = bObstacle = bEnemy = false;
             switch (theLayer)
             {
-                case Layer.BackObjects:
+                case LevelLayer.BackObjects:
                     bStone = true;
                     break;
-                case Layer.Coin:
+                case LevelLayer.Coin:
                     bCoin = true;
                     break;
-                case Layer.Collidable:
-                    bCollide = true;
+                case LevelLayer.Obstacle:
+                    bObstacle = true;
                     break;
-                case Layer.StartPosition:
+                case LevelLayer.StartPosition:
                     bStart = true;
                     break;
-                case Layer.Snail:
-                    bSnail = true;
+                case LevelLayer.Enemies:
+                    bEnemy = true;
                     break;
                 default:
                     return;
@@ -160,8 +172,8 @@ namespace FirstGame
             reader.ReadToFollowing("tile");
             if (bStart)
             {
-                Vector2 startPos = new Vector2((GraphicsDevice.Viewport.Width / 2), 0);
-            
+                Vector2 startPos = new Vector2();
+
                 do
                 {
 
@@ -169,10 +181,9 @@ namespace FirstGame
                     int.TryParse(reader.Value, out layout[column, row]);
                     if (layout[column, row] > 0)
                     {
-                        cameraMovementX = startPos.X = (scaledX * (column + 1)) - scaledX / 2;
-                        cameraMovementY = startPos.Y = scaledX * row;
-                        cameraMovementY -= GraphicsDevice.Viewport.Height - (scaledX * 3);
-                        //break;
+                        startPos.X = (scaledX * (column + 1)) - scaledX / 2;
+                        startPos.Y = scaledX * row;
+                        //cameraMovementY -= graphics.Viewport.Height - (scaledX * 3);
                     }
                     column++;
                     if (column > 99)
@@ -183,8 +194,10 @@ namespace FirstGame
                     reader.Read();
                     reader.Read();
                 } while (reader.Name == "tile");
-                theMan = new MegaMan(startPos, GraphicsDevice); //TODO: Need to move character loading outside of Level Class
-            theMan.Load(Content); //Need attribute to hold starting position so that the game can load the character's starting position
+
+                theMan.Teleport(startPos);
+                CheckCameraPosition();
+                cameraMovementY -= (32 * 5) * scaledX;
             }
             else
             {
@@ -206,7 +219,8 @@ namespace FirstGame
                 //0, 47 should be top left
                 //25, 62 should be the bottom right
                 //32 is the width and height
-                Random r = new Random();
+
+                Random r = new Random(); //Used to randomize elevator boxes
                 for (int i = 0; i < 100; i++)
                 {
                     for (int j = 0; j < 100; j++)
@@ -214,14 +228,14 @@ namespace FirstGame
                         int sequence = layout[i, j];
                         if (sequence > 0)
                         {
-                            SpriteAnimate sprite = new SpriteAnimate(levelSprites, 1, 18, GraphicsDevice);
+                            SpriteAnimate sprite = new SpriteAnimate(levelSprites, 1, 18, graphics);
                             sprite.SetRange(sequence - 1, sequence - 1);
                             Vector2 position = new Vector2((scaledX * (i + 1)) - scaledX / 2, scaledX * j);
                             if (bCoin)
                                 coins.Add(new StaticBox(sprite, position));
                             else if (bStone)
                                 terrain.Add(new TerrainBox(sprite, position));
-                            else if (bCollide)
+                            else if (bObstacle)
                             {
                                 if (sequence == 17)
                                 {
@@ -232,10 +246,10 @@ namespace FirstGame
                                 else
                                     obstacles.Add(new StaticBox(sprite, position));
                             }
-                            else if (bSnail)
+                            else if (bEnemy)
                             {
-                                Snail s = new Snail(position, graphics.GraphicsDevice);
-                                s.Load(Content);
+                                Snail s = new Snail(position, graphics);
+                                s.Load(content);
                                 enemies.Add(s);
                             }
                         }
@@ -246,14 +260,14 @@ namespace FirstGame
 
         void LoadLevelAndStartPosition()
         {
-            Texture2D levelSprites = Content.Load<Texture2D>(@"JnRTiles");
+            
             obstacles = new List<Collidable>();
             terrain = new List<TerrainBox>();
             coins = new List<StaticBox>();
             deathRec = new List<EmptyBox>();
             platforms = new List<ElevatorBox>();
-            enemies = new List<Snail>();
-            using (XmlReader reader = XmlReader.Create(new StreamReader(Content.RootDirectory + @"\Level1.xml")))
+            enemies = new List<Enemy>();
+            using (XmlReader reader = XmlReader.Create(new StreamReader(content.RootDirectory + levelName)))
             {
                 string tilesetImage = "";
                 int numTiles = 0;
@@ -287,12 +301,12 @@ namespace FirstGame
 
                 }
 
-               
+
                 int layerCount = 0;
                 float scaledX = tileWidth;
                 float scale = 1.0f;
 
-                scale = (float)GraphicsDevice.Viewport.Height / 480;
+                scale = (float)graphics.Viewport.Height / 480;
                 scaledX *= scale;
 
 
@@ -303,27 +317,27 @@ namespace FirstGame
                     switch (reader.Name)
                     {
                         case "name":
-                            if (reader.Value == "Background Stone" )
+                            if (reader.Value == "Background Stone")
                             {
-                                LoadLayer(Layer.BackObjects, reader, scaledX, levelSprites);
+                                LoadLayer(LevelLayer.BackObjects, reader, scaledX, levelSprites);
                             }
-                            else if(reader.Value == "Coin Layer")
+                            else if (reader.Value == "Coin Layer")
                             {
-                                LoadLayer(Layer.Coin, reader, scaledX, levelSprites);
-                                
+                                LoadLayer(LevelLayer.Coin, reader, scaledX, levelSprites);
+
                             }
                             else if (reader.Value == "Collide Layer")
                             {
-                                LoadLayer(Layer.Collidable, reader, scaledX, levelSprites);
+                                LoadLayer(LevelLayer.Obstacle, reader, scaledX, levelSprites);
                             }
                             else if (reader.Value == "Starting Position")
                             {
-                                LoadLayer(Layer.StartPosition, reader, scaledX, levelSprites);
-                                
+                                LoadLayer(LevelLayer.StartPosition, reader, scaledX, levelSprites);
+
                             }
                             else if (reader.Value == "Snail Layer")
                             {
-                                LoadLayer(Layer.Snail, reader, scaledX, null);
+                                LoadLayer(LevelLayer.Enemies, reader, scaledX, null);
                             }
                             break;
                     }
@@ -365,49 +379,7 @@ namespace FirstGame
                 }
 
             }
-            
-        }
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
-        protected override void LoadContent()
-        {
-            //For testing animations
 
-            spriteBatch = new SpriteBatch(GraphicsDevice);
-
-            background = new SpriteAnimate(Content.Load<Texture2D>(@"Background"), 1, 1, GraphicsDevice);
-            background.SetRange(0, 0);
-            background.Zoom = 2.0f;
-            backgroundLoc = new Vector2(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height);
-
-            LoadLevelAndStartPosition();
-
-            tahoma = Content.Load<SpriteFont>(@"Tahoma");
-
-            hudItems = Content.Load<Texture2D>("hud_heartGems");
-            healthBar = new List<TerrainBox>();
-            powerUps = new List<TerrainBox>();
-            for (int i = 0; i < 3; i++)
-            {
-                SpriteAnimate heart = new SpriteAnimate(hudItems, 2, 3, graphics.GraphicsDevice);
-                heart.SetRange(0, 0);
-                heart.Zoom = 0.5f;
-                healthBar.Add(new TerrainBox(heart, 
-                    new Vector2(i * heart.GetDestinationRec(Vector2.Zero).Width + heart.GetDestinationRec(Vector2.Zero).Width / 2,
-                        heart.GetDestinationRec(Vector2.Zero).Height + heart.GetDestinationRec(Vector2.Zero).Height / 2)));
-            }
-
-        }
-
-        /// <summary>
-        /// UnloadContent will be called once per game and is the place to unload
-        /// all content.
-        /// </summary>
-        protected override void UnloadContent()
-        {
-            // TODO: Unload any non ContentManager content here
         }
 
         void CheckCameraPosition()
@@ -418,14 +390,14 @@ namespace FirstGame
 
             // Calculate the edges of the screen.
 
-            float marginWidth = GraphicsDevice.Viewport.Width * ViewMarginX;
-            float marginHeight = GraphicsDevice.Viewport.Height * ViewMarginY;
+            float marginWidth = graphics.Viewport.Width * ViewMarginX;
+            float marginHeight = graphics.Viewport.Height * ViewMarginY;
 
             float marginLeft = cameraMovementX + marginWidth;
-            float marginRight = cameraMovementX + GraphicsDevice.Viewport.Width - marginWidth;
+            float marginRight = cameraMovementX + graphics.Viewport.Width - marginWidth;
 
             float marginTop = cameraMovementY + marginHeight;
-            float marginBottom = cameraMovementY + GraphicsDevice.Viewport.Height - marginHeight;
+            float marginBottom = cameraMovementY + graphics.Viewport.Height - marginHeight;
 
             // Calculate how far to scroll when the player is near the edges of the screen.
             float camMoveX = 0.0f;
@@ -442,64 +414,19 @@ namespace FirstGame
 
             // Update the camera position, but prevent scrolling off the ends of the level.
 
-            float maxCameraPositionX = obstacles[0].Bounds.Width * 100 - GraphicsDevice.Viewport.Width; //TODO: 100 should be sizeof level width
+            float maxCameraPositionX = obstacles[0].Bounds.Width * 100 - graphics.Viewport.Width; //TODO: 100 should be sizeof level width
             cameraMovementX = MathHelper.Clamp(cameraMovementX + camMoveX, 0.0f, maxCameraPositionX);
 
-            float maxCameraPositionY = obstacles[0].Bounds.Height* 100 - GraphicsDevice.Viewport.Height; //TODO: 100 should be sizeof level width
+            float maxCameraPositionY = obstacles[0].Bounds.Height * 100 - graphics.Viewport.Height; //TODO: 100 should be sizeof level width
             cameraMovementY = MathHelper.Clamp(cameraMovementY + camMoveY, 0.0f, maxCameraPositionY);
         }
 
-        /// <summary>
-        /// Allows the game to run logic such as updating the world,
-        /// checking for collisions, gathering input, and playing audio.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        protected override void Update(GameTime gameTime)
+        public void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
-
-            CheckCameraPosition();
-
-            if (GamePad.GetState(PlayerIndex.One).Buttons.LeftStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Left))
-                
-            {
-                if(!bLost)
-                theMan.Left();
-            }
-            else if (GamePad.GetState(PlayerIndex.One).Buttons.RightStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Right))
-            {
-                if (!bLost)
-                theMan.Right();
-            }
-            else
-            {
-                theMan.Still();
-            }
-
-            if (Keyboard.GetState().IsKeyDown(Keys.Space))
-            {
-                theMan.Jump();
-            }
-            else
-            {
-                theMan.StopJump();
-            }
-
-                
-            //Process Request to Shoot
-            if (Keyboard.GetState().IsKeyDown(Keys.LeftControl))
-            {
-                theMan.Shoot(0); //Currently using a constant, should be 'degrees'
-                //This Character is hardcoded to know that 'left-facing' should add 180 to degrees (internally)
-            }
-            else
-                theMan.StopShoot();
-
             platforms.ForEach(item =>
-                {
-                    item.Update(gameTime);
-                });
+            {
+                item.Update(gameTime);
+            });
             foreach (StaticBox c in obstacles)
             {
                 c.Update(gameTime);
@@ -519,11 +446,11 @@ namespace FirstGame
                     toRemove.Add(coins.IndexOf(item));
                     theMan.PowerUp(MegaPowerUp.Jump, 10000);
 
-                    SpriteAnimate gem = new SpriteAnimate(hudItems, 2, 3, graphics.GraphicsDevice);
+                    SpriteAnimate gem = new SpriteAnimate(hudItems, 2, 3, graphics);
                     gem.SetRange(3, 3);
                     gem.Zoom = 0.5f;
                     powerUps.Add(new TerrainBox(gem,
-                        new Vector2(graphics.GraphicsDevice.Viewport.Width - (gem.GetDestinationRec(Vector2.Zero).Width * 1.5f),
+                        new Vector2(graphics.Viewport.Width - (gem.GetDestinationRec(Vector2.Zero).Width * 1.5f),
                         gem.GetDestinationRec(Vector2.Zero).Height + gem.GetDestinationRec(Vector2.Zero).Height / 2)));
 
                 }
@@ -534,82 +461,88 @@ namespace FirstGame
                     powerUps.Clear();
 
             toRemove.ForEach(item =>
-                {
-                    coins.RemoveAt(item);
-                });
+            {
+                coins.RemoveAt(item);
+            });
             List<Collidable> obstaclesNWalls = new List<Collidable>();
             List<Rectangle> walls = new List<Rectangle>();
             Rectangle left, right, top, bottom;
-            left = new Rectangle(GraphicsDevice.Viewport.Bounds.Left - 5, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
-            right = new Rectangle(GraphicsDevice.Viewport.Bounds.Right, GraphicsDevice.Viewport.Y, 5, GraphicsDevice.Viewport.Height);
-            top = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Top - 5, GraphicsDevice.Viewport.Width, 5);
-            bottom = new Rectangle(GraphicsDevice.Viewport.Bounds.Left, GraphicsDevice.Viewport.Bounds.Bottom, GraphicsDevice.Viewport.Width, 5);
-            
+            left = new Rectangle(graphics.Viewport.Bounds.Left - 5, graphics.Viewport.Y, 5, graphics.Viewport.Height);
+            right = new Rectangle(graphics.Viewport.Bounds.Right, graphics.Viewport.Y, 5, graphics.Viewport.Height);
+            top = new Rectangle(graphics.Viewport.Bounds.Left, graphics.Viewport.Bounds.Top - 5, graphics.Viewport.Width, 5);
+            bottom = new Rectangle(graphics.Viewport.Bounds.Left, graphics.Viewport.Bounds.Bottom, graphics.Viewport.Width, 5);
+
             walls.Add(left);
             walls.Add(right);
             walls.Add(top);
             walls.Add(bottom);
 
             walls.ForEach(item =>
-                {
-                    item.X += (int)cameraMovementX;
-                    item.Y += (int)cameraMovementY;
-                    obstaclesNWalls.Add(new EmptyBox(item));
-                });
+            {
+                item.X += (int)cameraMovementX;
+                item.Y += (int)cameraMovementY;
+                obstaclesNWalls.Add(new EmptyBox(item));
+            });
 
             obstaclesNWalls.AddRange(obstacles);
 
             obstaclesNWalls.AddRange(platforms);
+
+            //Update enemies and add them to a list to send to the 'character' for special collision detection rules
             List<Enemy> badGuys = new List<Enemy>();
-             enemies.ForEach(item =>
-                {
-                    item.Update(gameTime, obstaclesNWalls);
-                    badGuys.Add(item);
-                });
+            enemies.ForEach(item =>
+            {
+                item.Update(gameTime, obstaclesNWalls);
+                badGuys.Add(item);
+            });
 
-             theMan.Update(gameTime, obstaclesNWalls, badGuys);
+            theMan.Update(gameTime, obstaclesNWalls, badGuys);
 
+            //Check to see if you fell into a 'pit'
             deathRec.ForEach(item =>
+            {
+                if (item.Bounds.Contains(theMan.Bounds.Center))
                 {
-                    if (item.Bounds.Contains(theMan.Bounds.Center))
-                    {
-                        bLost = true;
-                        theMan.Health = 0;
-                    }
-                });
+                    bLost = true;
+                    theMan.Health = 0;
+                }
+            });
 
+            //Update Health Level
             int currHP = theMan.Health;
             if (currHP <= 0)
                 bLost = true;
             healthBar.ForEach(item =>
+            {
+                if (currHP > 1)
                 {
-                    if(currHP > 1)
-                    {
-                        item.theBox.SetRange(0, 0);
-                        currHP -= 2;
-                    }
-                    else if (currHP > 0)
-                    {
-                        item.theBox.SetRange(1, 1);
-                        currHP -= 1;
-                    }
-                    else
-                    {
-                        item.theBox.SetRange(2, 2);
-                    }
-                });
+                    item.theBox.SetRange(0, 0);
+                    currHP -= 2;
+                }
+                else if (currHP > 0)
+                {
+                    item.theBox.SetRange(1, 1);
+                    currHP -= 1;
+                }
+                else
+                {
+                    item.theBox.SetRange(2, 2);
+                }
+            });
 
+            if (bWon || bLost)
+            {
+                if (bLost)
+                {
+                    lostCounter++;
+                }
+            }
 
-            base.Update(gameTime);
+            CheckCameraPosition();
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        protected override void Draw(GameTime gameTime)
-        {   
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+        public void Draw(GameTime gameTime)
+        {
             spriteBatch.Begin();
             background.Draw(spriteBatch, backgroundLoc);
             spriteBatch.End();
@@ -617,8 +550,8 @@ namespace FirstGame
             Matrix cameraTransform = Matrix.CreateTranslation(-cameraMovementX, -cameraMovementY, 0.0f);// *Matrix.CreateScale(curZoom, curZoom, 1); ;
             //Could set effects here if theMan.EffectIsActive(enum.Effect);
             //Effect effect = new Effect(GraphicsDevice, {0});
-            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, 
-                DepthStencilState.Default, RasterizerState.CullNone, null ,cameraTransform);
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp,
+                DepthStencilState.Default, RasterizerState.CullNone, null, cameraTransform);
 
             platforms.ForEach(item =>
             {
@@ -641,9 +574,9 @@ namespace FirstGame
             }
 
             enemies.ForEach(item =>
-                {
-                    item.Draw(spriteBatch, gameTime);
-                });
+            {
+                item.Draw(spriteBatch, gameTime);
+            });
 
             theMan.Draw(spriteBatch, gameTime);
 
@@ -654,20 +587,15 @@ namespace FirstGame
             //    });
             if (bWon || bLost)
             {
-                // Draw Hello World
                 string output = "You Win!";
                 if (bLost)
                 {
                     output = "Game Over...";
-                    lostCounter++;
-                    if (lostCounter > 150)
-                        Exit();
                 }
 
                 // Find the center of the string
                 Vector2 FontOrigin = tahoma.MeasureString(output) / 2;
-                // Draw the string
-                spriteBatch.DrawString(tahoma, output, new Vector2((GraphicsDevice.Viewport.Width / 2) + cameraMovementX, cameraMovementY + 50), Color.Wheat,
+                spriteBatch.DrawString(tahoma, output, new Vector2((graphics.Viewport.Width / 2) + cameraMovementX, cameraMovementY + 50), Color.Wheat,
                     0f, FontOrigin, 1.0f, SpriteEffects.None, 0.5f);
             }
 
@@ -681,10 +609,158 @@ namespace FirstGame
             });
 
             powerUps.ForEach(item =>
-                {
-                    item.Draw(spriteBatch, gameTime);
-                });
+            {
+                item.Draw(spriteBatch, gameTime);
+            });
             spriteBatch.End();
+        }
+    }
+
+    /// <summary>
+    /// This is the main type for your game
+    /// </summary>
+    public class Game1 : Game
+    {
+        
+        GraphicsDeviceManager graphics;
+        //SpriteBatch spriteBatch;
+
+        //Character.MegaMan theMan;
+        //List<Collidable> obstacles;
+        //List<TerrainBox> terrain;
+        //List<StaticBox> coins;
+        //List<ElevatorBox> platforms;
+        //List<EmptyBox> deathRec;
+        //List<Snail> enemies;
+        //List<TerrainBox> healthBar;
+        //List<TerrainBox> powerUps;
+        //Texture2D hudItems;
+        //SpriteAnimate background;
+        //Vector2 backgroundLoc;
+        //SpriteFont tahoma;
+        //bool bWon;
+        //bool bLost;
+        //int lostCounter;
+        //float cameraMovementX;
+        //float cameraMovementY;
+        //float curZoom;
+        //Weapon.MegaBlaster blaster;
+        Level1 level1;
+
+        public Game1()
+            : base()
+        {
+            graphics = new GraphicsDeviceManager(this);
+            
+            Content.RootDirectory = "Content";
+            //bWon = false;
+            //bLost = false;
+            //lostCounter = 0;
+            //cameraMovementX = 0.0f;
+            //cameraMovementY = 0.0f;
+            //curZoom = 0.0f;
+
+            //TODO Test Fullscreen:
+            //graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
+            //graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
+            //graphics.IsFullScreen = true;
+            //graphics.ApplyChanges();
+        }
+
+        /// <summary>
+        /// Allows the game to perform any initialization it needs to before starting to run.
+        /// This is where it can query for any required services and load any non-graphic
+        /// related content.  Calling base.Initialize will enumerate through any components
+        /// and initialize them as well.
+        /// </summary>
+        protected override void Initialize()
+        {
+            // TODO: Add your initialization logic here
+            
+            base.Initialize();
+
+        }
+
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent()
+        {
+            level1 = new Level1(100, 100, 100, 100, Content, GraphicsDevice);
+        }
+
+        /// <summary>
+        /// UnloadContent will be called once per game and is the place to unload
+        /// all content.
+        /// </summary>
+        protected override void UnloadContent()
+        {
+            // TODO: Unload any non ContentManager content here
+        }
+
+        /// <summary>
+        /// Allows the game to run logic such as updating the world,
+        /// checking for collisions, gathering input, and playing audio.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Update(GameTime gameTime)
+        {
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                Exit();
+
+            if (GamePad.GetState(PlayerIndex.One).Buttons.LeftStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Left))
+            {
+                if(!level1.Lost)
+                    level1.TheMan.Left();
+            }
+            else if (GamePad.GetState(PlayerIndex.One).Buttons.RightStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Right))
+            {
+                if (!level1.Lost)
+                    level1.TheMan.Right();
+            }
+            else
+            {
+                level1.TheMan.Still();
+            }
+
+            if (Keyboard.GetState().IsKeyDown(Keys.Space))
+            {
+                level1.TheMan.Jump();
+            }
+            else
+            {
+                level1.TheMan.StopJump();
+            }
+
+            //Process Request to Shoot
+            if (Keyboard.GetState().IsKeyDown(Keys.LeftControl))
+            {
+                level1.TheMan.Shoot(0); //Currently using a constant, should be 'degrees'
+                //This Character is hardcoded to know that 'left-facing' should add 180 to degrees (internally)
+            }
+            else
+                level1.TheMan.StopShoot();
+
+            
+
+            level1.Update(gameTime);
+            if(level1.Lost)
+                if (level1.LostCounter > 150)
+                    Exit();
+
+            base.Update(gameTime);
+        }
+
+        /// <summary>
+        /// This is called when the game should draw itself.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Draw(GameTime gameTime)
+        {   
+            GraphicsDevice.Clear(Color.CornflowerBlue);
+
+            level1.Draw(gameTime);
 
             base.Draw(gameTime);
         }

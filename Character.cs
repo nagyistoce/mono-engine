@@ -55,6 +55,11 @@ namespace Character
             graphics = graphicsDev;
         }
 
+        virtual public void Teleport(Vector2 position)
+        {
+            currentPosition = position;
+        }
+
         public void Left()
         {
             currentState = CharacterState.Left;
@@ -197,6 +202,8 @@ namespace Character
     {
         int Health { get; set; }
         int Damage { get; }
+        void Update(GameTime gameTime, List<Collidable> collidables);
+        void Draw(SpriteBatch spriteBatch, GameTime gameTime);
     }
 
     class Snail : Character, Enemy
@@ -763,6 +770,12 @@ namespace Character
             shootSprite.Update(time);
             currentWeapon.Update(time, obstaclesNEnemies);
             base.Update(time, obstacles);
+        }
+
+        public override void Teleport(Vector2 position)
+        {
+            jumpCounter = position.Y;
+            base.Teleport(position);
         }
 
         private void GetVectorFromAngle(float GunAngle, out Vector2 start, out Vector2 end)
