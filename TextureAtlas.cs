@@ -25,6 +25,19 @@ namespace TextureAtlas
         public int DrawDelay { get; set; }
         public float Trim { get; set; }
         public bool FlipHorizontal { get; set; }
+        private int width;
+        public int Width
+        {
+            get { return width; }
+            set { width = value; }
+        }
+        private int height;
+        public int Height
+        {
+            get { return height; }
+            set { height = value; }
+        }
+
         private float zoom;
         public float Zoom
         {
@@ -94,6 +107,16 @@ namespace TextureAtlas
             this.ScrollY = 0;
             this.ScrollX = 0;
             this.Rotate = 0.0f;
+            try
+            {
+
+                this.Height = Texture.Height / this.Rows;
+                this.Width = Texture.Width / this.Columns;
+            }
+            catch (Exception e)
+            {
+                //This Box must be 'invisible'
+            }
         }
 
         public void Update(GameTime time)
@@ -156,20 +179,20 @@ namespace TextureAtlas
 
             if (FlipHorizontal)
                 effect = SpriteEffects.FlipHorizontally;
-            spriteBatch.Draw(Texture,new Vector2( destinationRectangle.X + ScrollX,destinationRectangle.Y + ScrollY) , 
+            spriteBatch.Draw(Texture, destinationRectangle, 
                 sourceRectangle, 
                 Color.White, 
                 Rotate,
                 origin, 
-                scale * zoom, 
+              //  scale * zoom, 
                 effect, 
                 0.0f);
         }
 
         public Rectangle GetDestinationRec(Vector2 location)
         {
-            int width = this.Texture.Width / this.Columns;
-            int height = this.Texture.Height / this.Rows;
+            int width = this.Width;
+            int height = this.Height;
             return new Rectangle((int)location.X - (int)((width * this.Zoom) / 2),
                 (int)location.Y - (int)(height * this.Zoom),
                 (int)(width * this.Zoom),
