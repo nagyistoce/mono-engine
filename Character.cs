@@ -1012,7 +1012,7 @@ namespace Character
     class TerrainBox
     {
         public SpriteAnimate theBox;
-        Vector2 currentPosition;
+        public Vector2 currentPosition;
 
         public TerrainBox(SpriteAnimate Image, Vector2 startingPosition)
         {

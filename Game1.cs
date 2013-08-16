@@ -49,13 +49,19 @@ namespace FirstGame
         List<StaticBox> coins;
         List<ElevatorBox> platforms;
         List<EmptyBox> deathRec;
-        List<TerrainBox> healthBar;
+        List<TerrainBox> healthBar; //TODO: Go Away
         List<TerrainBox> powerUps;
         List<Enemy> enemies;
         ContentManager content;
         Texture2D levelSprites;
         GraphicsDevice graphics;
-        Texture2D hudItems;
+        Texture2D hudItems; //TODO: Go Away
+        Texture2D Status;
+        TerrainBox StatusBox;
+        Texture2D StatusBars;
+        TerrainBox HPBar, MPBar, XPBar;
+        int lastHP, lastMP, lastXP;
+        int maxBarWidth;
         SpriteAnimate background;
         Vector2 backgroundLoc;
         SpriteFont tahoma;
@@ -118,10 +124,49 @@ namespace FirstGame
             graphics = Graphics;
             cameraMovementX = cameraMovementY = 0.0f;
             bWon = bLost = false;
+            lastHP = lastMP = lastXP = -1;
+
             tahoma = content.Load<SpriteFont>(@"tahoma");
             theMan = new MegaMan(Vector2.Zero, graphics);
             theMan.Load(content);
             hudItems = Content.Load<Texture2D>("hud_heartGems");
+            Status = Content.Load<Texture2D>("CharacterStatus");
+            StatusBars = Content.Load<Texture2D>("CharacterBars");
+            SpriteAnimate guiBar = new SpriteAnimate(Status, 1, 1, graphics);
+            guiBar.SetRange(0, 0);
+            //guiBar.Zoom = 0.0f
+            StatusBox = new TerrainBox(guiBar, 
+                new Vector2(guiBar.GetDestinationRec(Vector2.Zero).Width / 2, 
+                guiBar.GetDestinationRec(Vector2.Zero).Height));
+
+            float scalerX = 0.615f;
+            float scalerY = 0.3f;
+            int Xposition = (int)(guiBar.Width * scalerX);
+            int Yposition = (int)(guiBar.Height * scalerY);
+
+            SpriteAnimate hpBar = new SpriteAnimate(StatusBars, 3, 1, graphics);
+            hpBar.SetRange(0, 0);
+            //hpBar.Zoom = 0.0f;
+            HPBar = new TerrainBox(hpBar,
+                new Vector2(Xposition,
+               Yposition));
+            maxBarWidth = HPBar.theBox.Width;
+
+            SpriteAnimate mpBar = new SpriteAnimate(StatusBars, 3, 1, graphics);
+            mpBar.SetRange(1, 1);
+            //hpBar.Zoom = 0.0f;
+            MPBar = new TerrainBox(mpBar,
+                new Vector2(Xposition,
+                Yposition * 2));
+
+            SpriteAnimate xpBar = new SpriteAnimate(StatusBars, 3, 1, graphics);
+            xpBar.SetRange(2, 2);
+            //hpBar.Zoom = 0.0f;
+            XPBar = new TerrainBox(xpBar,
+                new Vector2(Xposition,
+                Yposition * 3));
+
+
             healthBar = new List<TerrainBox>();
             powerUps = new List<TerrainBox>();
             for (int i = 0; i < 3; i++)
@@ -511,23 +556,17 @@ namespace FirstGame
             int currHP = theMan.Health;
             if (currHP <= 0)
                 bLost = true;
-            healthBar.ForEach(item =>
+
+            //TODO: Set the width of each as a percentage from theMan.Health, Mana, XP, etc...
+            if (lastHP != currHP && lastHP != -1)
             {
-                if (currHP > 1)
-                {
-                    item.theBox.SetRange(0, 0);
-                    currHP -= 2;
-                }
-                else if (currHP > 0)
-                {
-                    item.theBox.SetRange(1, 1);
-                    currHP -= 1;
-                }
-                else
-                {
-                    item.theBox.SetRange(2, 2);
-                }
-            });
+                float changePercent = (float)theMan.Health / (float)theMan.MaxHealth;
+                int oldWidth = HPBar.theBox.Width;
+                HPBar.theBox.Width = (int)(maxBarWidth * changePercent);
+                HPBar.currentPosition.X = HPBar.currentPosition.X - ((oldWidth - HPBar.theBox.Width) / 2);
+            }
+
+            lastHP = currHP;
 
             if (bWon || bLost)
             {
@@ -602,10 +641,16 @@ namespace FirstGame
 
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp,
                 DepthStencilState.Default, RasterizerState.CullNone);
-            healthBar.ForEach(item =>
-            {
-                item.Draw(spriteBatch, gameTime);
-            });
+            //healthBar.ForEach(item =>
+            //{
+            //    item.Draw(spriteBatch, gameTime);
+            //});
+
+            //Draw the HUD on top of everything
+            StatusBox.Draw(spriteBatch, gameTime);
+            HPBar.Draw(spriteBatch, gameTime);
+            MPBar.Draw(spriteBatch, gameTime);
+            XPBar.Draw(spriteBatch, gameTime);
 
             powerUps.ForEach(item =>
             {
