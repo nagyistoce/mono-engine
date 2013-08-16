@@ -94,11 +94,11 @@ namespace Weapon
             });
         }
 
-        public void Draw(SpriteBatch batch, GameTime time)
+        public void Draw(SpriteBatch batch)
         {
             bulletList.ForEach(bullet =>
             {
-                bullet.Draw(batch, bulletSprite, time);
+                bullet.Draw(batch, bulletSprite);
             });
         }
 

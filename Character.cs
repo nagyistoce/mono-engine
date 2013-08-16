@@ -547,38 +547,41 @@ namespace Character
                 {
                     lastAction = subAction;
                     subAction = CharacterSubState.Falling;
+                    currentPosition.Y -= runRate * 2;
                 }
                 //If we are 'on top' of an object, act as though we are standing on it
                 else
                 {
-                    if (StateIsLeft(currentState))
-                    {
-                        if (subAction == CharacterSubState.Shooting)
-                            currentState = CharacterState.ShootLeft;
-                        else if(currentState != CharacterState.Left)
-                            currentState = CharacterState.StillLeft;
-                    }
-                    else
-                    {
-                        if (subAction == CharacterSubState.Shooting)
-                            currentState = CharacterState.ShootRight;
-                        else if (currentState != CharacterState.Right)
-                            currentState = CharacterState.StillRight;
-                    }
+                    //if (StateIsLeft(currentState))
+                    //{
+                    //    if (subAction == CharacterSubState.Shooting)
+                    //        currentState = CharacterState.ShootLeft;
+                    //    else if(currentState != CharacterState.Left)
+                    //        currentState = CharacterState.StillLeft;
+                    //}
+                    //else
+                    //{
+                    //    if (subAction == CharacterSubState.Shooting)
+                    //        currentState = CharacterState.ShootRight;
+                    //    else if (currentState != CharacterState.Right)
+                    //        currentState = CharacterState.StillRight;
+                    //}
+                    HandleUpDownCollision(c);
                 }
 
-                currentPosition.Y -= runRate * 2;
+                
 
-                if (c != null)
-                {
-                    if (c.Moving)
-                    {
-                        jumpCounter = currentPosition.Y = c.Bounds.Top - 1;
-                        lastAction = subAction;
-                        if(subAction != CharacterSubState.Shooting)
-                            subAction = CharacterSubState.None;
-                    }
-                }
+                //if (c != null)
+                //{
+                //    if (c.Moving)
+                //    {
+                //        //jumpCounter = currentPosition.Y = c.Bounds.Top - 1;
+                //        //lastAction = subAction;
+                //        //if(subAction != CharacterSubState.Shooting)
+                //        //    subAction = CharacterSubState.None;
+                        
+                //    }
+                //}
             }
 
             if (currentState == CharacterState.Left)
@@ -700,66 +703,14 @@ namespace Character
                 }
             }
 
-            CollisionDetection(obstacles, out c);
+            
             //else
             //    collide = CollisionDetection(new List<Collidable> { floor }, out c);
 
             //Apply checks to see if we are striking the object from top, bottom, left or right
-            if (c != null)
+            if (CollisionDetection(obstacles, out c))
             {
-                Rectangle collideBounds = c.Bounds;
-                Rectangle charBounds = Bounds;
-
-                //Handle up-down collision
-                if (charBounds.Top <= collideBounds.Bottom &&
-                    charBounds.Bottom > collideBounds.Bottom)
-                {
-                    //Start Falling
-                    lastAction = subAction;
-                    subAction = CharacterSubState.Falling;
-                }
-                else if (charBounds.Bottom >= collideBounds.Top &&
-                    charBounds.Top < collideBounds.Top)
-                {
-                    //Stand Still
-
-                    if (StateIsLeft(currentState))
-                    {
-                        if (subAction == CharacterSubState.Shooting)
-                        {
-                            currentState = CharacterState.ShootLeft;
-                        }
-                        else
-                        {
-                            if (subAction != CharacterSubState.Jumping)
-                            {
-                                if (currentState != CharacterState.Left)
-                                    currentState = CharacterState.StillLeft;
-                                lastAction = subAction;
-                                subAction = CharacterSubState.None;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (subAction == CharacterSubState.Shooting)
-                        {
-                            currentState = CharacterState.ShootRight;
-                        }
-                        else
-                        {
-                            if (subAction != CharacterSubState.Jumping)
-                            {
-                                if (currentState != CharacterState.Right)
-                                    currentState = CharacterState.StillRight;
-                                lastAction = subAction;
-                                subAction = CharacterSubState.None;
-                            }
-                        }
-                    }
-
-                    currentPosition.Y = jumpCounter = collideBounds.Top - 1;
-                }
+                HandleUpDownCollision(c);
             }
 
             List<Collidable> obstaclesNEnemies = new List<Collidable>();
@@ -771,12 +722,73 @@ namespace Character
             shootSprite.Update(time);
             currentWeapon.Update(time, obstaclesNEnemies);
             base.Update(time, obstacles);
+
         }
 
         public override void Teleport(Vector2 position)
         {
             jumpCounter = position.Y;
             base.Teleport(position);
+        }
+
+        private void HandleUpDownCollision(Collidable collide)
+        {
+            Rectangle collideBounds = collide.Bounds;
+            Rectangle charBounds = Bounds;
+
+            //Handle up-down collision
+            if (charBounds.Top <= collideBounds.Bottom &&
+                charBounds.Bottom > collideBounds.Bottom)
+            {
+                
+                    //Start Falling
+                    lastAction = subAction;
+                    subAction = CharacterSubState.Falling;
+                
+            }
+            else if (charBounds.Bottom >= collideBounds.Top &&
+                charBounds.Top < collideBounds.Top)
+            {
+                //Stand Still
+
+                if (StateIsLeft(currentState))
+                {
+                    if (subAction == CharacterSubState.Shooting)
+                    {
+                        currentState = CharacterState.ShootLeft;
+                    }
+                    else
+                    {
+                        if (subAction != CharacterSubState.Jumping)
+                        {
+                            if (currentState != CharacterState.Left)
+                                currentState = CharacterState.StillLeft;
+                            lastAction = subAction;
+                            subAction = CharacterSubState.None;
+                        }
+                    }
+                }
+                else
+                {
+                    if (subAction == CharacterSubState.Shooting)
+                    {
+                        currentState = CharacterState.ShootRight;
+                    }
+                    else
+                    {
+                        if (subAction != CharacterSubState.Jumping)
+                        {
+                            if (currentState != CharacterState.Right)
+                                currentState = CharacterState.StillRight;
+                            lastAction = subAction;
+                            subAction = CharacterSubState.None;
+                        }
+                    }
+                }
+
+                currentPosition.Y = jumpCounter = collideBounds.Top - 1;
+            }
+
         }
 
         private void GetVectorFromAngle(float GunAngle, out Vector2 start, out Vector2 end)
@@ -862,7 +874,7 @@ namespace Character
                 else
                     runnerSprite.Draw(spriteBatch, currentPosition);
             }
-            currentWeapon.Draw(spriteBatch, time);
+            currentWeapon.Draw(spriteBatch);
         }
 
         private bool EnemyCollision(List<Enemy> obstacles, out Enemy enemyCollided)

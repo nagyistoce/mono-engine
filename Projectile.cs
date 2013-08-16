@@ -136,13 +136,13 @@ namespace Projectile
         public void Update(GameTime time)
         {
             animation.Update(time);
+            UpdateCurrentLocation(time);
 
         }
 
         //Need to take 'time' into account - Update based on number of milliseconds passed since last draw
-        public void Draw(SpriteBatch batch, SpriteAnimate sprite, GameTime time)
+        public void Draw(SpriteBatch batch, SpriteAnimate sprite)
         {
-            UpdateCurrentLocation(time);
             sprite.Draw(batch, currLoc);
         }
 

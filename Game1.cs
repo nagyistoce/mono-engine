@@ -14,19 +14,20 @@ using TextureAtlas;
 using Projectile;
 using Weapon;
 using Character;
+using Storage;
 #endregion
 
 namespace FirstGame
 {
 
-    enum Layer
-    {
-        Coin,
-        Collidable,
-        StartPosition,
-        BackObjects,
-        Snail
-    }
+    //enum Layer
+    //{
+    //    Coin,
+    //    Collidable,
+    //    StartPosition,
+    //    BackObjects,
+    //    Snail
+    //}
 
     enum LevelLayer
     {
@@ -39,7 +40,7 @@ namespace FirstGame
         Enemies
     }
 
-    class Level1
+    class Level
     {
         private int[,] FullLevel;
         private int[,] LoadedLevel;
@@ -58,7 +59,7 @@ namespace FirstGame
         SpriteAnimate background;
         Vector2 backgroundLoc;
         SpriteFont tahoma;
-        SpriteBatch spriteBatch;
+        
         bool bWon;
         public bool Won
         {
@@ -107,7 +108,7 @@ namespace FirstGame
 
         string levelName;
 
-        public Level1(int rows, int columns, int loadWidth, int loadHeight, ContentManager Content, GraphicsDevice Graphics)
+        public Level(int rows, int columns, int loadWidth, int loadHeight, ContentManager Content, GraphicsDevice Graphics)
         {
             content = Content;
             FullLevel = new int [rows,columns];
@@ -136,8 +137,6 @@ namespace FirstGame
             background.SetRange(0, 0);
             background.Zoom = 2.0f;
             backgroundLoc = new Vector2(graphics.Viewport.Width / 2, graphics.Viewport.Height);
-            spriteBatch = new SpriteBatch(graphics);
-
             LoadLevelAndStartPosition();
         }
 
@@ -541,7 +540,7 @@ namespace FirstGame
             CheckCameraPosition();
         }
 
-        public void Draw(GameTime gameTime)
+        public void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {
             spriteBatch.Begin();
             background.Draw(spriteBatch, backgroundLoc);
@@ -616,49 +615,441 @@ namespace FirstGame
         }
     }
 
+    public class MenuItem
+    {
+        SpriteAnimate buttonSprite;
+        SpriteAnimate buttonBubble;
+        Rectangle buttonRec;
+        SpriteFont textFont;
+        public bool Selected { get; set; }
+        string text;
+        public string Text
+        {
+            get
+            {
+                return text;
+            }
+        }
+        Vector2 drawPosition;
+
+        public MenuItem(string ButtonText, SpriteFont TextFont, Vector2 CenterPosition)
+        {
+            text = ButtonText;
+            textFont = TextFont;
+            drawPosition = CenterPosition;
+            Selected = false;
+            
+        }
+
+        public void SetBubbleGreen()
+        {
+            buttonBubble.SetRange(0, 0);
+        }
+
+        public void SetBubbleBlue()
+        {
+            buttonBubble.SetRange(1, 1);
+        }
+
+        public void SetBubbleRed()
+        {
+            buttonBubble.SetRange(2, 2);
+        }
+
+        public void Load(ContentManager Content, GraphicsDevice graphics)
+        {
+            Vector2 textSize = textFont.MeasureString(text);
+            buttonRec = new Rectangle((int)drawPosition.X, (int)drawPosition.Y, (int)textSize.X, (int)textSize.Y);
+            Texture2D buttonTex = Content.Load<Texture2D>(@"UITextBox");
+            buttonBubble = new SpriteAnimate(Content.Load<Texture2D>(@"UI3Buttons"), 1, 3, graphics);
+            buttonBubble.SetRange(2, 2);
+            int origHeight = buttonBubble.Height;
+            buttonBubble.Height = (int)(textSize.Y * 2.25);
+            //buttonBubble.Width = buttonBubble.Height;
+            buttonBubble.Width = buttonBubble.Height;//(int)((float)(buttonBubble.Height / origHeight) * buttonBubble.Width);
+
+            buttonSprite = new SpriteAnimate(buttonTex, 1, 1, graphics);
+            buttonSprite.SetRange(0, 0);
+            
+            buttonSprite.Width = (int)(textSize.X * 2.25);
+            buttonSprite.Height = (int)(textSize.Y * 2.25);
+                //new Texture2D(graphics, 1, 1);
+
+        }
+
+         public void Update(GameTime time)
+        {
+
+        }
+
+         //Assumes spriteBatch.Begin() has already been called
+         public void Draw(GameTime time, SpriteBatch spriteBatch)
+         {
+
+             Color textColor = Color.White;
+
+             if (Selected)
+             {
+                 textColor = Color.SlateBlue;
+             }
+             //else
+             //{
+
+             //}
+             Vector2 FontOrigin = textFont.MeasureString(text) / 2;
+
+             //spriteBatch.Draw(buttonTex, new Rectangle((int)drawPosition.X - 20, (int)drawPosition.Y - 5,
+             //    (int)((FontOrigin * 2).X * 4), (int)((FontOrigin * 2).Y * 2)),
+             //    null,
+             //    Color.White,
+             //    0f,
+             //    FontOrigin,
+             //    SpriteEffects.None,
+             //    0.5f);
+             Vector2 boxPosition = new Vector2(drawPosition.X, drawPosition.Y + FontOrigin.Y*2.25f);
+             Rectangle box = buttonSprite.GetDestinationRec(boxPosition);
+             Vector2 bubblePosition = new Vector2( box.Left + (box.Width * 0.10f) - (buttonBubble.Width / 2), boxPosition.Y);
+
+             buttonSprite.Draw(spriteBatch, boxPosition);//new Vector2(drawPosition.X, drawPosition.Y));
+             buttonBubble.Draw(spriteBatch, bubblePosition);
+             
+             spriteBatch.DrawString(textFont, text, drawPosition, textColor,
+                 0f, FontOrigin, 1.0f, SpriteEffects.None, 0.5f);
+         }
+    }
+
+    public class Menu
+    {
+        protected List<MenuItem> buttons;
+        protected string selectedButtonText;
+
+        public Menu()
+        {
+            buttons = new List<MenuItem>();
+            selectedButtonText = "";
+        }
+
+        protected Color CreateTransparency(Byte transparency_amount)
+        {
+            return Color.FromNonPremultiplied(10, 10, 10, transparency_amount);
+        }
+
+        virtual public void Update(GameTime time)
+        {
+            buttons.ForEach(item =>
+            {
+                item.Update(time);
+            });
+        }
+
+        virtual public void Draw(GameTime time, SpriteBatch spriteBatch)
+        {
+            if (buttons.Count == 0)
+                return;
+
+            spriteBatch.Begin();
+
+            buttons.ForEach(item =>
+            {
+                item.Draw(time, spriteBatch);
+            });
+
+            spriteBatch.End();
+        }
+
+        virtual public void Select(Game1 theGame)
+        {
+            int oldIndex = -1;
+            buttons.ForEach(item =>
+            {
+                if (item.Selected)
+                    oldIndex = buttons.IndexOf(item);
+            });
+
+            if (oldIndex != -1)
+                selectedButtonText = buttons[oldIndex].Text;
+            else
+                selectedButtonText = "";
+        }
+
+        public void Up()
+        {
+            AlterSelection(-1);
+        }
+
+        public void Down()
+        {
+            AlterSelection(1);
+        }
+
+        protected void AlterSelection(int movement)
+        {
+            int oldIndex = -1;
+            buttons.ForEach(item =>
+            {
+                if (item.Selected)
+                    oldIndex = buttons.IndexOf(item);
+            });
+
+            if (oldIndex >= 0)
+            {
+                buttons[oldIndex].Selected = false;
+                if ((oldIndex + movement) == buttons.Count)
+                {
+                    buttons[0].Selected = true;
+                }
+                else if ((oldIndex + movement) < 0)
+                    buttons[buttons.Count + movement].Selected = true;
+                else
+                    buttons[oldIndex + movement].Selected = true;
+            }
+        }
+    }
+
+    public class PauseMenu : Menu
+    {
+        Texture2D backgroundOverlay;
+        Texture2D foreGroundWindow;
+        SpriteFont textFont;
+        Rectangle screenSize;
+        Rectangle menuSize;
+        Color backgroundColor;
+
+        public PauseMenu() : base()
+        {
+
+        }
+
+        public void Load(ContentManager Content, GraphicsDevice graphics)
+        {
+            textFont = Content.Load<SpriteFont>(@"Tahoma");
+            screenSize = graphics.Viewport.Bounds;
+
+            float scaleX = 0.35f;
+            float scaleY = 0.35f;
+            menuSize = screenSize;
+            menuSize.X += (int)(screenSize.Width * scaleX) / 2;
+            menuSize.Y += (int)(screenSize.Height * scaleY) / 2;
+            menuSize.Width = (int)(menuSize.Width * (1.0 - scaleX));
+            menuSize.Height = (int)(menuSize.Height * (1.0 - scaleY));
+
+            backgroundColor = CreateTransparency(200); //0 is transparent, 255 is opaque
+            backgroundOverlay = new Texture2D(graphics, 1, 1);
+            backgroundOverlay.SetData<Color>(new Color[] { backgroundColor });
+
+            foreGroundWindow = new Texture2D(graphics, 1, 1);
+            foreGroundWindow.SetData<Color>(new Color[] { Color.DarkSlateGray });
+
+            Vector2 LoadPos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.9f));
+            MenuItem loadButton = new MenuItem("Load", textFont, LoadPos);
+            loadButton.Load(Content, graphics);
+            loadButton.SetBubbleGreen();
+            buttons.Add(loadButton);
+
+            Vector2 savePos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.7f));
+            MenuItem saveButton = new MenuItem("Save", textFont, savePos);
+            saveButton.Load(Content, graphics);
+            saveButton.SetBubbleBlue();
+            saveButton.Selected = true;
+            selectedButtonText = saveButton.Text;
+            buttons.Add(saveButton);
+
+            Vector2 exitPos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.10f));
+            MenuItem exitButton = new MenuItem("Exit", textFont, exitPos);
+            exitButton.Load(Content, graphics);
+            buttons.Add(exitButton);
+        }
+
+        override public void Draw(GameTime time, SpriteBatch spriteBatch)
+        {
+
+            spriteBatch.Begin();
+
+            spriteBatch.Draw(backgroundOverlay, screenSize, backgroundColor);
+            Color [] c = new Color[1];
+            foreGroundWindow.GetData<Color>(c,0,1);
+            spriteBatch.Draw(foreGroundWindow, menuSize, c[0]);
+
+            
+            string output = "Paused...";
+            Vector2 FontOrigin = textFont.MeasureString(output) / 2;
+            spriteBatch.DrawString(textFont, output, new Vector2((screenSize.Width / 2), 50), Color.Wheat,
+                0f, FontOrigin, 1.0f, SpriteEffects.None, 0.5f);
+
+            spriteBatch.End();
+
+            base.Draw(time, spriteBatch);
+        }
+
+        public override void Select(Game1 theGame)
+        {
+            base.Select(theGame);
+
+                switch (selectedButtonText)
+                {
+                    case "Exit":
+                        theGame.Exit();
+                        break;
+                    case "Save":
+                        SavedGame theSave = new SavedGame();
+                        theSave.CurrentLevel = 1;//theGame.currentLevel;
+                        theSave.date = DateTime.Today;
+                        //Open Dialogue to select which 'name' the game will be saved under
+                        theSave.Name = "Save1";
+                        //GameSaver needs support to handle multiple concurrent savefiles?
+                        GameSaver gSaver = new GameSaver();
+                        gSaver.Save(theSave);
+                        break;
+                    case "Load":
+                        GameSaver gLoader = new GameSaver();
+                        SavedGame theLoad = gLoader.Load();
+                        break;
+                }
+        }
+    }
+
+    public class MainMenu : Menu
+    {
+        Texture2D backgroundOverlay;
+        Texture2D foreGroundWindow;
+        SpriteFont textFont;
+        Rectangle screenSize;
+        Rectangle menuSize;
+        Color backgroundColor;
+        public MainMenu() : base()
+        {
+        }
+
+        public void Load(ContentManager Content, GraphicsDevice graphics)
+        {
+            textFont = Content.Load<SpriteFont>(@"Tahoma");
+            screenSize = graphics.Viewport.Bounds;
+
+            float scaleX = 0.35f;
+            float scaleY = 0.35f;
+            menuSize = screenSize;
+            menuSize.X += (int)(screenSize.Width * scaleX) / 2;
+            menuSize.Y += (int)(screenSize.Height * scaleY) / 2;
+            menuSize.Width = (int)(menuSize.Width * (1.0 - scaleX));
+            menuSize.Height = (int)(menuSize.Height * (1.0 - scaleY));
+
+            backgroundColor = CreateTransparency(200); //0 is transparent, 255 is opaque
+            backgroundOverlay = new Texture2D(graphics, 1, 1);
+            backgroundOverlay.SetData<Color>(new Color[] { backgroundColor });
+
+            foreGroundWindow = new Texture2D(graphics, 1, 1);
+            foreGroundWindow.SetData<Color>(new Color[] { Color.DarkSlateGray });
+
+            Vector2 LoadPos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.9f));
+            MenuItem newButton = new MenuItem("New", textFont, LoadPos);
+            newButton.Load(Content, graphics);
+            newButton.SetBubbleGreen();
+            buttons.Add(newButton);
+
+            Vector2 savePos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.7f));
+            MenuItem loadButton = new MenuItem("Load", textFont, savePos);
+            loadButton.Load(Content, graphics);
+            loadButton.SetBubbleBlue();
+            loadButton.Selected = true;
+            selectedButtonText = loadButton.Text;
+            buttons.Add(loadButton);
+
+            Vector2 exitPos = new Vector2(screenSize.Width / 2.0f, menuSize.Bottom - (menuSize.Height * 0.10f));
+            MenuItem exitButton = new MenuItem("Exit", textFont, exitPos);
+            exitButton.Load(Content, graphics);
+            buttons.Add(exitButton);
+        }
+
+        override public void Draw(GameTime time, SpriteBatch spriteBatch)
+        {
+
+            spriteBatch.Begin();
+
+            spriteBatch.Draw(backgroundOverlay, screenSize, backgroundColor);
+            Color[] c = new Color[1];
+            foreGroundWindow.GetData<Color>(c, 0, 1);
+            spriteBatch.Draw(foreGroundWindow, menuSize, c[0]);
+
+
+            string output = "MEGA RUNNER";
+            Vector2 FontOrigin = textFont.MeasureString(output) / 2;
+            spriteBatch.DrawString(textFont, output, new Vector2((screenSize.Width / 2), 50), Color.Wheat,
+                0f, FontOrigin, 1.0f, SpriteEffects.None, 0.5f);
+
+            spriteBatch.End();
+
+            base.Draw(time, spriteBatch);
+        }
+
+        public override void Select(Game1 theGame)
+        {
+            base.Select(theGame);
+
+            switch (selectedButtonText)
+            {
+                case "Exit":
+                    theGame.Exit();
+                    break;
+                //case "Save":
+                //    SavedGame theSave = new SavedGame();
+                //    theSave.CurrentLevel = 1;//theGame.currentLevel;
+                //    theSave.date = DateTime.Today;
+                //    //Open Dialogue to select which 'name' the game will be saved under
+                //    theSave.Name = "Save1";
+                //    //GameSaver needs support to handle multiple concurrent savefiles?
+                //    GameSaver gSaver = new GameSaver();
+                //    gSaver.Save(theSave);
+                //    break;
+                case "Load":
+                    GameSaver gLoader = new GameSaver();
+                    SavedGame theLoad = gLoader.Load();
+                    theGame.bGameStarted = true;
+                    theGame.theSave = theLoad;
+                    break;
+                case "New":
+                    theGame.bGameStarted = true;
+                    break;
+
+            }
+        }
+    }
+
     /// <summary>
     /// This is the main type for your game
     /// </summary>
     public class Game1 : Game
     {
-        
         GraphicsDeviceManager graphics;
-        //SpriteBatch spriteBatch;
+        public SavedGame theSave;
+        GameSaver gameSaver;
+        bool bMenuIsOpen;
+        bool bEscapeUp;
+        bool bUpUp;
+        bool bDownUp;
+        bool bEnterUp;
+        public bool bGameStarted;
+        Level level1;
+        PauseMenu pauseMenu;
+        MainMenu mainMenu;
+        SpriteBatch spriteBatch;
 
-        //Character.MegaMan theMan;
-        //List<Collidable> obstacles;
-        //List<TerrainBox> terrain;
-        //List<StaticBox> coins;
-        //List<ElevatorBox> platforms;
-        //List<EmptyBox> deathRec;
-        //List<Snail> enemies;
-        //List<TerrainBox> healthBar;
-        //List<TerrainBox> powerUps;
-        //Texture2D hudItems;
-        //SpriteAnimate background;
-        //Vector2 backgroundLoc;
-        //SpriteFont tahoma;
-        //bool bWon;
-        //bool bLost;
-        //int lostCounter;
-        //float cameraMovementX;
-        //float cameraMovementY;
-        //float curZoom;
-        //Weapon.MegaBlaster blaster;
-        Level1 level1;
 
         public Game1()
             : base()
         {
             graphics = new GraphicsDeviceManager(this);
-            
+            bMenuIsOpen = false;
+            bEscapeUp = true;
+            bDownUp = true;
+            bUpUp = true;
+            bEnterUp = true;
+            bGameStarted = false;
             Content.RootDirectory = "Content";
-            //bWon = false;
-            //bLost = false;
-            //lostCounter = 0;
-            //cameraMovementX = 0.0f;
-            //cameraMovementY = 0.0f;
-            //curZoom = 0.0f;
+            pauseMenu = new PauseMenu();
+            mainMenu = new MainMenu();
+            theSave = new SavedGame();
+            gameSaver = new GameSaver();
+            spriteBatch = new SpriteBatch(GraphicsDevice);
 
             //TODO Test Fullscreen:
             //graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
@@ -687,7 +1078,9 @@ namespace FirstGame
         /// </summary>
         protected override void LoadContent()
         {
-            level1 = new Level1(100, 100, 100, 100, Content, GraphicsDevice);
+            level1 = new Level(100, 100, 100, 100, Content, GraphicsDevice);
+            pauseMenu.Load(Content, GraphicsDevice);
+            mainMenu.Load(Content, GraphicsDevice);
         }
 
         /// <summary>
@@ -706,15 +1099,54 @@ namespace FirstGame
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-                Exit();
+            
 
-            if (GamePad.GetState(PlayerIndex.One).Buttons.LeftStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Left))
+            KeyboardState kbState = Keyboard.GetState();
+            GamePadState gpState = GamePad.GetState(PlayerIndex.One);
+
+            if (!bGameStarted)
+            {
+                mainMenu.Update(gameTime);
+                DoMenu(kbState, gpState, mainMenu);
+                base.Update(gameTime);
+                return;
+            }
+
+            if(!bEscapeUp && kbState.IsKeyUp(Keys.Escape))
+                bEscapeUp = true;
+
+            if (bMenuIsOpen)
+            {
+                if (kbState.IsKeyDown(Keys.Escape) && bEscapeUp)
+                {
+                    bMenuIsOpen = false;
+                    bEscapeUp = false;
+                }
+                else
+                {
+                    pauseMenu.Update(gameTime);
+                    DoMenu(kbState, gpState, pauseMenu);
+                    base.Update(gameTime);
+                    return;
+                }
+            }
+            else if (kbState.IsKeyDown(Keys.Escape) && bEscapeUp)
+            {
+                bMenuIsOpen = true;
+                bEscapeUp = false;
+                pauseMenu.Update(gameTime);
+                DoMenu(kbState, gpState, pauseMenu);
+                base.Update(gameTime);
+                return;
+            }
+
+
+            if (gpState.Buttons.LeftStick == ButtonState.Pressed || kbState.IsKeyDown(Keys.Left))
             {
                 if(!level1.Lost)
                     level1.TheMan.Left();
             }
-            else if (GamePad.GetState(PlayerIndex.One).Buttons.RightStick == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Right))
+            else if (gpState.Buttons.RightStick == ButtonState.Pressed || kbState.IsKeyDown(Keys.Right))
             {
                 if (!level1.Lost)
                     level1.TheMan.Right();
@@ -724,7 +1156,7 @@ namespace FirstGame
                 level1.TheMan.Still();
             }
 
-            if (Keyboard.GetState().IsKeyDown(Keys.Space))
+            if (kbState.IsKeyDown(Keys.Space))
             {
                 level1.TheMan.Jump();
             }
@@ -734,7 +1166,7 @@ namespace FirstGame
             }
 
             //Process Request to Shoot
-            if (Keyboard.GetState().IsKeyDown(Keys.LeftControl))
+            if (kbState.IsKeyDown(Keys.LeftControl))
             {
                 level1.TheMan.Shoot(0); //Currently using a constant, should be 'degrees'
                 //This Character is hardcoded to know that 'left-facing' should add 180 to degrees (internally)
@@ -760,9 +1192,56 @@ namespace FirstGame
         {   
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            level1.Draw(gameTime);
+            if (!bGameStarted)
+            {
+                mainMenu.Draw(gameTime, spriteBatch);
+                base.Draw(gameTime);
+                return;
+            }
+
+            level1.Draw(gameTime, spriteBatch);
+
+            if (bMenuIsOpen)
+                pauseMenu.Draw(gameTime, spriteBatch);
 
             base.Draw(gameTime);
         }
+
+        public void DoMenu(KeyboardState kb, GamePadState gp, Menu theMenu)
+        {
+            if (kb.IsKeyDown(Keys.Up))
+            {
+                if (bUpUp)
+                {
+                    bUpUp = false;
+                    theMenu.Up();
+                }
+            }
+            else
+                bUpUp = true;
+
+            if (kb.IsKeyDown(Keys.Down))
+            {
+                if (bDownUp)
+                {
+                    bDownUp = false;
+                    theMenu.Down();
+                }
+            }
+            else
+                bDownUp = true;
+
+            if (kb.IsKeyDown(Keys.Enter))
+            {
+                if (bEnterUp)
+                {
+                    bEnterUp = false;
+                    theMenu.Select(this);
+                }
+            }
+            else
+                bEnterUp = true;
+        }
+
     }
 }
